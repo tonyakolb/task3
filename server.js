@@ -39,6 +39,10 @@ app.get('/antoninakolb_gmail_com', (req, res) => {
     res.send(result.toString());
 });
 
+app.get('/', (req, res) => {
+    res.type('text').send('Сервер работает. Используйте: /antoninakolb_gmail_com?x=число&y=число\nПример: /antoninakolb_gmail_com?x=12&y=18');
+});
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
