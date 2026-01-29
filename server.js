@@ -2,54 +2,97 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-function isNaturalNumber(num) {
-    if (num === '' || num === null || num === undefined) return false;
-    const n = Number(num);
-    return !isNaN(n) && isFinite(n) && Number.isInteger(n) && n > 0;
-}
-
-function gcd(a, b) {
-    a = Math.abs(a);
-    b = Math.abs(b);
-    while (b !== 0) {
-        const temp = b;
-        b = a % b;
-        a = temp;
+function safeParseBigInt(str) {
+    try {
+        if (typeof str !== 'string' && typeof str !== 'number') {
+            return { success: false, value: null };
+        }
+        
+        const trimmed = String(str).trim();
+        if (trimmed === '') {
+            return { success: false, value: null };
+        }
+        
+        if (!/^\d+$/.test(trimmed)) {
+            return { success: false, value: null };
+        }
+        
+        const bigIntValue = BigInt(trimmed);
+        
+        if (bigIntValue <= 0n) {
+            return { success: false, value: null };
+        }
+        
+        return { success: true, value: bigIntValue };
+    } catch (error) {
+        return { success: false, value: null };
     }
-    return a;
 }
 
-function lcm(a, b) {
-    if (a === 0 || b === 0) return 0;
-    return Math.abs(a * b) / gcd(a, b);
+function gcdBigInt(a, b) {
+    let x = a > b ? a : b;
+    let y = a > b ? b : a;
+    
+    while (y !== 0n) {
+        const temp = y;
+        y = x % y;
+        x = temp;
+    }
+    return x;
+}
+
+function lcmBigInt(a, b) {
+    try {
+        const product = a * b;
+        
+        if (product > BigInt(Number.MAX_SAFE_INTEGER)) {
+            const gcdValue = gcdBigInt(a, b);
+            const lcmValue = product / gcdValue;
+            
+            if (lcmValue.toString().length > 1000000) {
+                return { success: false, value: null };
+            }
+            
+            return { success: true, value: lcmValue.toString() };
+        } else {
+            const numA = Number(a);
+            const numB = Number(b);
+            const gcdValue = gcdBigInt(a, b);
+            const lcmValue = (numA * numB) / Number(gcdValue);
+            
+            if (!Number.isFinite(lcmValue) || !Number.isInteger(lcmValue)) {
+                return { success: false, value: null };
+            }
+            
+            return { success: true, value: lcmValue.toString() };
+        }
+    } catch (error) {
+        return { success: false, value: null };
+    }
 }
 
 app.get('/antoninakolb_gmail_com', (req, res) => {
     const x = req.query.x;
     const y = req.query.y;
     
-    if (x === undefined || y === undefined || x === '' || y === '') {
+    if (x === undefined || y === undefined) {
         return res.type('text/plain; charset=utf-8').send('NaN');
     }
     
-    if (!isNaturalNumber(x) || !isNaturalNumber(y)) {
+    const xParsed = safeParseBigInt(x);
+    const yParsed = safeParseBigInt(y);
+    
+    if (!xParsed.success || !yParsed.success) {
         return res.type('text/plain; charset=utf-8').send('NaN');
     }
     
-    const numX = Number(x);
-    const numY = Number(y);
+    const lcmResult = lcmBigInt(xParsed.value, yParsed.value);
     
-    if (numX <= 0 || numY <= 0 || !Number.isInteger(numX) || !Number.isInteger(numY)) {
+    if (!lcmResult.success) {
         return res.type('text/plain; charset=utf-8').send('NaN');
     }
     
-    const result = lcm(numX, numY);
-    
-    if (!Number.isInteger(result)) {
-        return res.type('text/plain; charset=utf-8').send('NaN');
-    }
-    
-    res.type('text/plain; charset=utf-8').send(result.toString());
+    res.type('text/plain; charset=utf-8').send(lcmResult.value);
 });
 
 app.get('/', (req, res) => {
